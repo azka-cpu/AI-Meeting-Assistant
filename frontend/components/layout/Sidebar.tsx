@@ -11,10 +11,7 @@ import {
   CalendarDays,
   Sparkles,
   Mic,
-  BookOpen,
   Settings,
-  Crown,
-  ArrowRight,
   LogOut,
 } from 'lucide-react';
 import { authApi } from '@/lib/api';
@@ -31,7 +28,6 @@ const navItems = [
   { href: '/calendar', label: 'Calendar', icon: CalendarDays },
   { href: '/insights', label: 'AI Insights', icon: Sparkles },
   { href: '/voice', label: 'Voice Assistant', icon: Mic },
-  { href: '/knowledge', label: 'Knowledge Base', icon: BookOpen },
   { href: '/settings', label: 'Settings', icon: Settings },
 ];
 
@@ -97,8 +93,8 @@ export default function Sidebar() {
               key={item.href}
               href={item.href}
               className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive
-                ? 'bg-blue-600 text-white'
-                : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-slate-400 hover:bg-slate-800 hover:text-white'
                 }`}
             >
               <Icon className="w-5 h-5" />
@@ -107,20 +103,6 @@ export default function Sidebar() {
           );
         })}
       </nav>
-
-      {/* Upgrade Card */}
-      <div className="mx-4 mb-4 p-4 rounded-xl bg-slate-800 border border-slate-700">
-        <div className="flex items-center gap-2 mb-2">
-          <Crown className="w-5 h-5 text-yellow-400" />
-          <p className="text-sm font-semibold text-white">Upgrade to Pro</p>
-        </div>
-        <p className="text-xs text-slate-400 mb-3 leading-relaxed">
-          Get more insights, longer recordings and advanced AI features.
-        </p>
-        <button className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors">
-          Upgrade Now <ArrowRight className="w-4 h-4" />
-        </button>
-      </div>
 
       {/* User Profile */}
       <div className="border-t border-slate-800 px-4 py-4">

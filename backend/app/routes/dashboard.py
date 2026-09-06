@@ -1,4 +1,5 @@
 
+
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
@@ -41,13 +42,15 @@ def get_dashboard_stats(
         return round((completed_count(meetings) / len(meetings)) * 100, 1)
 
     def time_saved(meetings):
+        # Proxy metric: each meeting that has an AI summary saves ~15 min
+        # of manual note-taking. Adjust the multiplier as you see fit.
         if not meetings:
             return 0.0
         meeting_ids = [m.id for m in meetings]
         summarized = db.query(MeetingSummary).filter(
             MeetingSummary.meeting_id.in_(meeting_ids)
         ).count()
-        return round(summarized * 0.25, 1)
+        return round(summarized * 0.25, 1)  # hours
 
     def participant_count(meetings):
         if not meetings:
@@ -72,22 +75,6 @@ def get_dashboard_stats(
         else 0.0
     )
 
-    # ── NEW: weekly activity for the last 6 weeks (real counts) ──
-    weekly_activity = []
-    for i in range(5, -1, -1):
-        week_start = now - timedelta(weeks=i, days=now.weekday())
-        week_start = week_start.replace(hour=0, minute=0, second=0, microsecond=0)
-        week_end = week_start + timedelta(days=7)
-        count = db.query(Meeting).filter(
-            Meeting.user_id == current_user.id,
-            Meeting.created_at >= week_start,
-            Meeting.created_at < week_end,
-        ).count()
-        weekly_activity.append({
-            "week_label": week_start.strftime("%b %d"),
-            "meetings": count,
-        })
-
     return DashboardStats(
         time_saved_hours=this_time_saved,
         time_saved_change=round(this_time_saved - last_time_saved, 1),
@@ -96,5 +83,4 @@ def get_dashboard_stats(
         total_participants=this_participants,
         participants_change=participants_change,
         total_meetings=len(this_month),
-        weekly_activity=weekly_activity,
     )

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState } from 'react';
@@ -82,7 +83,8 @@ export default function RegisterPage() {
         return;
       }
 
-      router.push('/dashboard');
+      const returnPath = auth.getAndClearPostLoginRedirect();
+      router.push(returnPath || '/dashboard');
     } catch (err: unknown) {
       const errorMessage =
         err instanceof Error ? err.message : 'Registration failed. Please try again.';

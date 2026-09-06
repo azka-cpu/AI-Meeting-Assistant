@@ -231,3 +231,38 @@ export const dashboardApi = {
   getStats: () =>
     api.get<DashboardStatsResponse>('/api/dashboard/stats'),
 };
+
+export interface FullProfile {
+  id: string;
+  name: string;
+  email: string;
+  job_title?: string | null;
+  company?: string | null;
+}
+
+export interface Preferences {
+  notify_email: boolean;
+  notify_reminders: boolean;
+  notify_weekly_digest: boolean;
+  notify_product_updates: boolean;
+  pref_language: string;
+  pref_timezone: string;
+}
+
+export const profileApi = {
+  updateProfile: (data: Partial<Pick<FullProfile, 'name' | 'email' | 'job_title' | 'company'>>) =>
+    api.put<FullProfile>('/api/auth/me', data),
+
+  changePassword: (currentPassword: string, newPassword: string) =>
+    api.put<{ success: boolean }>('/api/auth/me/password', {
+      current_password: currentPassword,
+      new_password: newPassword,
+    }),
+
+  getPreferences: () => api.get<Preferences>('/api/auth/me/preferences'),
+
+  updatePreferences: (data: Partial<Preferences>) =>
+    api.put<Preferences>('/api/auth/me/preferences', data),
+
+  deleteAccount: () => api.delete<{ success: boolean }>('/api/auth/me'),
+};

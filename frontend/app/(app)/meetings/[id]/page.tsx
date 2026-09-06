@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -17,6 +16,8 @@ import {
     MessageSquare,
     Clock,
     Video,
+    Link2,
+    Check,
 } from 'lucide-react';
 
 interface Meeting {
@@ -40,6 +41,7 @@ export default function MeetingDetailsPage() {
     const [regenerating, setRegenerating] = useState(false);
     const [genError, setGenError] = useState('');
     const [hasNoTranscript, setHasNoTranscript] = useState(false);
+    const [linkCopied, setLinkCopied] = useState(false);
 
     const loadMeeting = useCallback(async () => {
         try {
@@ -111,6 +113,14 @@ export default function MeetingDetailsPage() {
         }
     };
 
+    function copyInviteLink() {
+        const url = `${window.location.origin}/meetings/${meetingId}/room`;
+        navigator.clipboard.writeText(url).then(() => {
+            setLinkCopied(true);
+            setTimeout(() => setLinkCopied(false), 2000);
+        });
+    }
+
     const formatDate = (dateString: string) =>
         new Date(dateString).toLocaleDateString('en-US', {
             month: 'short',
@@ -152,6 +162,19 @@ export default function MeetingDetailsPage() {
                             <ArrowLeft className="w-4 h-4" />
                             Back
                         </Link>
+                        <Button variant="secondary" size="sm" onClick={copyInviteLink}>
+                            {linkCopied ? (
+                                <>
+                                    <Check className="w-4 h-4 text-emerald-600" />
+                                    Copied!
+                                </>
+                            ) : (
+                                <>
+                                    <Link2 className="w-4 h-4" />
+                                    Copy Invite Link
+                                </>
+                            )}
+                        </Button>
                         <Link href={`/meetings/${meetingId}/room`}>
                             <Button variant="primary" size="sm">
                                 <Video className="w-4 h-4" />

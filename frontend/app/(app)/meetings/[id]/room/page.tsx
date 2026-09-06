@@ -4,7 +4,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { authApi, aiApi } from '@/lib/api';
+import { authApi, aiApi, meetingApi } from '@/lib/api';
 import { auth } from '@/lib/auth';
 import {
     Mic,
@@ -13,6 +13,8 @@ import {
     VideoOff,
     PhoneOff,
     AlertCircle,
+    Link2,
+    Check,
 } from 'lucide-react';
 
 interface CurrentUser {
@@ -77,6 +79,7 @@ export default function MeetingRoomPage() {
     >('connecting');
     const [mediaError, setMediaError] = useState('');
     const [leaving, setLeaving] = useState(false);
+    const [linkCopied, setLinkCopied] = useState(false);
 
     const localVideoRef = useRef<HTMLVideoElement>(null);
     const wsRef = useRef<WebSocket | null>(null);
@@ -90,7 +93,16 @@ export default function MeetingRoomPage() {
             .me()
             .then((data) => setUser(data as CurrentUser))
             .catch(() => setUser(null));
-    }, []);
+
+        // Register as a participant even if this page was reached via a
+        // direct link (not the Join button on Meetings/Calendar, which
+        // already calls this). Without this, someone who joins by
+        // pasting a meeting URL never gets a Participant row, so the
+        // meeting would never show up in THEIR meetings list afterward
+        // (list_meetings returns creator + participant meetings only).
+        // A 409 here just means they're already a participant — ignore it.
+        meetingApi.join(meetingId).catch(() => { });
+    }, [meetingId]);
 
     useEffect(() => {
         if (!user) return;
@@ -327,6 +339,14 @@ export default function MeetingRoomPage() {
         recorder.start(8000);
     }
 
+    function copyInviteLink() {
+        const url = `${window.location.origin}/meetings/${meetingId}/room`;
+        navigator.clipboard.writeText(url).then(() => {
+            setLinkCopied(true);
+            setTimeout(() => setLinkCopied(false), 2000);
+        });
+    }
+
     function toggleMic() {
         localStreamRef.current?.getAudioTracks().forEach((t) => (t.enabled = !micOn));
         setMicOn((v) => !v);
@@ -382,21 +402,39 @@ export default function MeetingRoomPage() {
         <div className="min-h-screen bg-slate-900 flex flex-col">
             <div className="px-6 py-3 flex items-center justify-between text-sm text-slate-400">
                 <span>Meeting Room</span>
-                <span
-                    className={
-                        connectionState === 'connected'
-                            ? 'text-emerald-400'
+                <div className="flex items-center gap-4">
+                    <button
+                        onClick={copyInviteLink}
+                        className="flex items-center gap-1.5 text-slate-300 hover:text-white transition-colors"
+                    >
+                        {linkCopied ? (
+                            <>
+                                <Check className="w-4 h-4 text-emerald-400" />
+                                <span className="text-emerald-400">Link copied!</span>
+                            </>
+                        ) : (
+                            <>
+                                <Link2 className="w-4 h-4" />
+                                <span>Copy invite link</span>
+                            </>
+                        )}
+                    </button>
+                    <span
+                        className={
+                            connectionState === 'connected'
+                                ? 'text-emerald-400'
+                                : connectionState === 'error'
+                                    ? 'text-red-400'
+                                    : 'text-amber-400'
+                        }
+                    >
+                        {connectionState === 'connected'
+                            ? '● Connected'
                             : connectionState === 'error'
-                                ? 'text-red-400'
-                                : 'text-amber-400'
-                    }
-                >
-                    {connectionState === 'connected'
-                        ? '● Connected'
-                        : connectionState === 'error'
-                            ? '● Connection error'
-                            : '● Connecting...'}
-                </span>
+                                ? '● Connection error'
+                                : '● Connecting...'}
+                    </span>
+                </div>
             </div>
 
             <div className="flex-1 p-6 grid grid-cols-1 md:grid-cols-2 gap-4 auto-rows-fr">
@@ -430,24 +468,31 @@ export default function MeetingRoomPage() {
             <div className="px-6 py-5 flex items-center justify-center gap-4 border-t border-slate-800">
                 <button
                     onClick={toggleMic}
-                    className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${micOn ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-red-600 hover:bg-red-700 text-white'
+                    className={`flex items-center gap-2 px-4 py-3 rounded-full transition-colors ${micOn ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-red-600 hover:bg-red-700 text-white'
                         }`}
                 >
                     {micOn ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
+                    <span className="text-sm font-medium hidden sm:inline">
+                        {micOn ? 'Mute' : 'Unmute'}
+                    </span>
                 </button>
                 <button
                     onClick={toggleCam}
-                    className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${camOn ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-red-600 hover:bg-red-700 text-white'
+                    className={`flex items-center gap-2 px-4 py-3 rounded-full transition-colors ${camOn ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-red-600 hover:bg-red-700 text-white'
                         }`}
                 >
                     {camOn ? <VideoIcon className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />}
+                    <span className="text-sm font-medium hidden sm:inline">
+                        {camOn ? 'Stop Video' : 'Start Video'}
+                    </span>
                 </button>
                 <button
                     onClick={leaveCall}
                     disabled={leaving}
-                    className="w-12 h-12 rounded-full bg-red-600 hover:bg-red-700 text-white flex items-center justify-center transition-colors disabled:opacity-60"
+                    className="flex items-center gap-2 px-5 py-3 rounded-full bg-red-600 hover:bg-red-700 text-white font-medium transition-colors disabled:opacity-60"
                 >
                     <PhoneOff className="w-5 h-5" />
+                    <span className="text-sm">Leave Meeting</span>
                 </button>
             </div>
 

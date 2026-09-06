@@ -26,10 +26,6 @@ export default function LoginPage() {
     try {
       await authApi.login(email, password);
 
-      // Defensive check: authApi.login() should have already saved
-      // the token internally. If it somehow didn't (backend response
-      // shape mismatch), don't navigate to a page that will just
-      // 401 and bounce back — surface a clear error instead.
       if (!auth.isAuthenticated()) {
         setError(
           'Login succeeded but no session token was received. Please try again or contact support.'
@@ -37,7 +33,8 @@ export default function LoginPage() {
         return;
       }
 
-      router.push('/dashboard');
+
+
     } catch (err: unknown) {
       const errorMessage =
         err instanceof Error ? err.message : 'Login failed. Please try again.';

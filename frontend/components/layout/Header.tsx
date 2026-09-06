@@ -1,7 +1,9 @@
+
+
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, Bell, ChevronDown, Sun } from 'lucide-react';
+import { Search, ChevronDown } from 'lucide-react';
 import { authApi } from '@/lib/api';
 
 interface CurrentUser {
@@ -58,17 +60,6 @@ export default function Header({ title, subtitle, rightAction }: HeaderProps) {
         <div className="flex items-center gap-4 ml-6">
           {rightAction}
 
-          <button className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition-colors">
-            <Sun className="w-4 h-4 text-slate-600" />
-          </button>
-
-          <button className="relative w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition-colors">
-            <Bell className="w-4 h-4 text-slate-600" />
-            <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-              3
-            </span>
-          </button>
-
           <div className="relative">
             <button
               onClick={() => setShowDropdown(!showDropdown)}
@@ -96,12 +87,6 @@ export default function Header({ title, subtitle, rightAction }: HeaderProps) {
                   className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
                 >
                   Settings
-                </a>
-                <a
-                  href="/settings"
-                  className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
-                >
-                  Profile
                 </a>
               </div>
             )}
