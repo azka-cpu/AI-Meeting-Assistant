@@ -1,7 +1,8 @@
+
+
 from datetime import datetime
-from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Text, Boolean, Enum
+from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Text, Boolean
 from sqlalchemy.orm import relationship
-import enum
 
 from app.database import Base
 
@@ -15,6 +16,17 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+    job_title = Column(String, nullable=True)
+    company = Column(String, nullable=True)
+
+    notify_email = Column(Boolean, default=True)
+    notify_reminders = Column(Boolean, default=True)
+    notify_weekly_digest = Column(Boolean, default=False)
+    notify_product_updates = Column(Boolean, default=True)
+
+    pref_language = Column(String, default="en")
+    pref_timezone = Column(String, default="UTC")
+
     meetings = relationship("Meeting", back_populates="user")
 
 
@@ -26,10 +38,11 @@ class Meeting(Base):
     title = Column(String, nullable=False)
     description = Column(Text, nullable=True)
     status = Column(String, default="active")
-    scheduled_at = Column(DateTime, nullable=True)
-    duration_minutes = Column(Integer, default=30)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    scheduled_at = Column(DateTime, nullable=True)
+    duration_minutes = Column(Integer, default=30)
 
     user = relationship("User", back_populates="meetings")
     participants = relationship("Participant", back_populates="meeting")

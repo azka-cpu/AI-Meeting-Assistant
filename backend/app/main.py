@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 import os
 
 from app.database import engine, Base
-from app.routes import auth, meetings, ai, dashboard, webrtc
+from app.routes import auth, meetings, ai, dashboard, webrtc,profile
 from app.websocket import websocket_manager
 
 load_dotenv()
@@ -45,7 +45,8 @@ app.add_middleware(
 # Include routes
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(meetings.router, prefix="/api/meetings", tags=["meetings"])
-app.include_router(ai.router, prefix="/api/meetings", tags=["ai"])  # ← FIXED (was "/api/ai")
+app.include_router(ai.router, prefix="/api/meetings", tags=["ai"])  
+app.include_router(profile.router, prefix="/api/auth", tags=["profile"])
 app.include_router(dashboard.router)
 app.include_router(webrtc.router)
 
