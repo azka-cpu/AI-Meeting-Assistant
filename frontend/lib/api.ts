@@ -290,3 +290,4 @@ export const voiceApi = {
   chat: (message: string) =>
     api.post<{ reply: string }>('/api/voice/chat', { message }),
 };
+

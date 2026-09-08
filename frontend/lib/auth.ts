@@ -1,5 +1,7 @@
 
+
 const TOKEN_KEY = 'token';
+const REDIRECT_KEY = 'post_login_redirect';
 
 export const auth = {
   getToken(): string | null {
@@ -28,6 +30,17 @@ export const auth = {
 
   redirectToLogin(): void {
     if (typeof window === 'undefined') return;
+    const currentPath = window.location.pathname;
+    if (currentPath !== '/login' && currentPath !== '/register') {
+      sessionStorage.setItem(REDIRECT_KEY, currentPath);
+    }
     window.location.href = '/login';
+  },
+
+  getAndClearPostLoginRedirect(): string | null {
+    if (typeof window === 'undefined') return null;
+    const path = sessionStorage.getItem(REDIRECT_KEY);
+    sessionStorage.removeItem(REDIRECT_KEY);
+    return path;
   },
 };

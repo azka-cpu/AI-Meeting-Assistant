@@ -20,6 +20,20 @@ Base.metadata.create_all(bind=engine)
 async def lifespan(app: FastAPI):
     # Startup
     print("Starting AI Meeting Assistant API...")
+
+    import os
+    jwt_secret = os.getenv("JWT_SECRET")
+    if not jwt_secret or jwt_secret == "your-secret-key-change-in-production":
+        print(
+                "\n"
+                "âš ï¸  WARNING: JWT_SECRET is not set (or is using the default "
+                "fallback) in backend/.env.\n"
+                "    Every token issued right now will become INVALID the next "
+                "time this falls back differently.\n"
+                "    Add a real JWT_SECRET line to backend/.env and restart.\n"
+            )
+    else:
+        print(f"âœ… JWT_SECRET loaded correctly (starts with: {jwt_secret[:6]}...)")
     yield
     # Shutdown
     print("Shutting down AI Meeting Assistant API...")
