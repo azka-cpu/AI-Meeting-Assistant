@@ -266,3 +266,27 @@ export const profileApi = {
 
   deleteAccount: () => api.delete<{ success: boolean }>('/api/auth/me'),
 };
+
+export const voiceApi = {
+  transcribe: async (audioBlob: Blob): Promise<string> => {
+    const formData = new FormData();
+    formData.append('audio', audioBlob, 'recording.webm');
+
+    const response = await fetch(`${API_URL}/api/voice/transcribe`, {
+      method: 'POST',
+      headers: { ...auth.getAuthHeader() },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.json().catch(() => ({}));
+      throw new Error(extractErrorMessage(errorBody, response.status));
+    }
+
+    const data = await response.json();
+    return data.text || '';
+  },
+
+  chat: (message: string) =>
+    api.post<{ reply: string }>('/api/voice/chat', { message }),
+};

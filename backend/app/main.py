@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 import os
 
 from app.database import engine, Base
-from app.routes import auth, meetings, ai, dashboard, webrtc,profile
+from app.routes import auth, meetings, ai, dashboard, webrtc,profile, voice
 from app.websocket import websocket_manager
 
 load_dotenv()
@@ -49,7 +49,7 @@ app.include_router(ai.router, prefix="/api/meetings", tags=["ai"])
 app.include_router(profile.router, prefix="/api/auth", tags=["profile"])
 app.include_router(dashboard.router)
 app.include_router(webrtc.router)
-
+app.include_router(voice.router)
 
 @app.get("/")
 async def root():

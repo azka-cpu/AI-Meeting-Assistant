@@ -1,250 +1,233 @@
+
+
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Header from '@/components/layout/Header';
 import Card from '@/components/ui/card';
-import Button from '@/components/ui/button';
-import Badge from '@/components/ui/badge';
-import Toggle from '@/components/ui/toggle';
+import { voiceApi } from '@/lib/api';
+import { Mic, Square, AlertCircle, User, Sparkles } from 'lucide-react';
+
+interface ConversationTurn {
+  id: string;
+  role: 'user' | 'assistant';
+  text: string;
+}
+
+type RecordingState = 'idle' | 'recording' | 'transcribing' | 'thinking' | 'speaking';
+
+function describeMediaError(err: unknown): string {
+  if (err instanceof DOMException) {
+    switch (err.name) {
+      case 'NotFoundError':
+        return 'No microphone was found on this device.';
+      case 'NotAllowedError':
+        return 'Microphone access was blocked. Allow it in your browser settings and reload.';
+      case 'NotReadableError':
+        return 'Your microphone is already in use by another app.';
+      default:
+        return `Microphone error: ${err.message || err.name}`;
+    }
+  }
+  return 'Could not access your microphone.';
+}
 
 export default function VoiceAssistantPage() {
-  const [isListening, setIsListening] = useState(false);
-  const [voiceSettings, setVoiceSettings] = useState({
-    enabled: true,
-    autoTranscribe: true,
-    realTimeAnalysis: true,
-    nativeLanguage: 'English',
-  });
+  const [state, setState] = useState<RecordingState>('idle');
+  const [conversation, setConversation] = useState<ConversationTurn[]>([]);
+  const [error, setError] = useState('');
+
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [conversation]);
+
+  useEffect(() => {
+    // Stop any mic stream if the page is left mid-recording
+    return () => {
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      window.speechSynthesis?.cancel();
+    };
+  }, []);
+
+  const startRecording = async () => {
+    setError('');
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      chunksRef.current = [];
+
+      const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      mediaRecorderRef.current = recorder;
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+
+      recorder.onstop = () => {
+        stream.getTracks().forEach((t) => t.stop());
+        handleRecordingComplete();
+      };
+
+      recorder.start();
+      setState('recording');
+    } catch (err) {
+      setError(describeMediaError(err));
+      setState('idle');
+    }
+  };
+
+  const stopRecording = () => {
+    mediaRecorderRef.current?.stop();
+  };
+
+  const handleRecordingComplete = async () => {
+    const audioBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
+
+    if (audioBlob.size < 1000) {
+      setState('idle');
+      setError('Recording was too short — try holding it a bit longer.');
+      return;
+    }
+
+    setState('transcribing');
+    try {
+      const text = await voiceApi.transcribe(audioBlob);
+
+      if (!text.trim()) {
+        setState('idle');
+        setError("Couldn't hear anything clearly — try again.");
+        return;
+      }
+
+      const userTurn: ConversationTurn = {
+        id: crypto.randomUUID(),
+        role: 'user',
+        text,
+      };
+      setConversation((prev) => [...prev, userTurn]);
+
+      setState('thinking');
+      const { reply } = await voiceApi.chat(text);
+
+      const assistantTurn: ConversationTurn = {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        text: reply,
+      };
+      setConversation((prev) => [...prev, assistantTurn]);
+
+      speak(reply);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Something went wrong.');
+      setState('idle');
+    }
+  };
+
+  const speak = (text: string) => {
+    if (!('speechSynthesis' in window)) {
+      setState('idle');
+      return;
+    }
+    setState('speaking');
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.onend = () => setState('idle');
+    utterance.onerror = () => setState('idle');
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const handleMicClick = () => {
+    if (state === 'idle') {
+      startRecording();
+    } else if (state === 'recording') {
+      stopRecording();
+    }
+  };
+
+  const statusLabel: Record<RecordingState, string> = {
+    idle: 'Tap to speak',
+    recording: 'Listening... tap to stop',
+    transcribing: 'Transcribing...',
+    thinking: 'Thinking...',
+    speaking: 'Speaking...',
+  };
+
+  const micDisabled = state === 'transcribing' || state === 'thinking' || state === 'speaking';
 
   return (
     <>
-      <Header
-        title="Voice Assistant"
-        subtitle="AI-powered voice features for your meetings"
-      />
+      <Header title="Voice Assistant" subtitle="Talk to your AI meeting assistant" />
 
-      <main className="p-8 max-w-4xl">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Voice Control */}
-          <div className="lg:col-span-2">
-            <Card>
-              <h3 className="text-2xl font-bold text-[var(--color-text-primary)] mb-8 text-center">
-                Meeting Voice Assistant
-              </h3>
+      <main className="p-8 max-w-3xl mx-auto">
+        <Card className="text-center py-12 mb-6">
+          <button
+            onClick={handleMicClick}
+            disabled={micDisabled}
+            className={`
+              w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-4
+              transition-all disabled:opacity-50 disabled:cursor-not-allowed
+              ${state === 'recording'
+                ? 'bg-red-500 hover:bg-red-600 animate-pulse'
+                : 'bg-blue-600 hover:bg-blue-700'
+              }
+            `}
+          >
+            {state === 'recording' ? (
+              <Square className="w-8 h-8 text-white" fill="currentColor" />
+            ) : (
+              <Mic className="w-8 h-8 text-white" />
+            )}
+          </button>
+          <p className="text-slate-600 font-medium">{statusLabel[state]}</p>
 
-              <div className="flex flex-col items-center justify-center mb-8">
-                <button
-                  onClick={() => setIsListening(!isListening)}
-                  className={`
-                    w-32 h-32 rounded-full flex items-center justify-center transition-all duration-300
-                    ${isListening
-                      ? 'bg-[var(--color-error)] shadow-lg shadow-[var(--color-error)]/50 animate-pulse'
-                      : 'bg-[var(--color-primary)] shadow-lg shadow-[var(--color-primary)]/50'
-                    }
-                  `}
+          {error && (
+            <div className="flex items-center justify-center gap-2 mt-4 text-sm text-red-500">
+              <AlertCircle className="w-4 h-4" />
+              {error}
+            </div>
+          )}
+        </Card>
+
+        {conversation.length > 0 && (
+          <Card>
+            <h2 className="font-bold text-slate-900 mb-4">Conversation</h2>
+            <div className="space-y-4 max-h-96 overflow-y-auto">
+              {conversation.map((turn) => (
+                <div
+                  key={turn.id}
+                  className={`flex gap-3 ${turn.role === 'user' ? '' : 'flex-row-reverse text-right'}`}
                 >
-                  <span className="text-4xl">
-                    {isListening ? '🎙️' : '🎤'}
-                  </span>
-                </button>
-
-                <p className="text-center mt-6 text-lg font-semibold">
-                  {isListening ? (
-                    <>
-                      <span className="text-[var(--color-error)]">Recording...</span>
-                      <p className="text-sm text-[var(--color-text-muted)] mt-2">
-                        Click to stop listening
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <span className="text-[var(--color-text-primary)]">Ready to listen</span>
-                      <p className="text-sm text-[var(--color-text-muted)] mt-2">
-                        Click to start recording
-                      </p>
-                    </>
-                  )}
-                </p>
-              </div>
-
-              <div className="bg-[var(--color-background-dark)] rounded-lg p-6 mb-6">
-                <p className="text-sm text-[var(--color-text-muted)] mb-4">
-                  Transcription Output:
-                </p>
-                <p className="text-[var(--color-text-primary)] leading-relaxed">
-                  {isListening
-                    ? 'Listening to your voice... Please speak clearly'
-                    : 'No active transcription. Click the microphone button to start.'}
-                </p>
-              </div>
-
-              <div className="flex gap-3">
-                <Button variant="secondary" fullWidth>
-                  📋 Copy Transcript
-                </Button>
-                <Button variant="secondary" fullWidth>
-                  🔄 Clear
-                </Button>
-              </div>
-            </Card>
-
-            {/* Voice Commands */}
-            <Card className="mt-6">
-              <h3 className="text-lg font-bold text-[var(--color-text-primary)] mb-4">
-                Voice Commands
-              </h3>
-
-              <div className="space-y-3">
-                <div className="p-3 bg-[var(--color-background-dark)] rounded-lg">
-                  <p className="font-medium text-[var(--color-text-primary)] text-sm">
-                    "Summarize the meeting"
-                  </p>
-                  <p className="text-xs text-[var(--color-text-muted)] mt-1">
-                    Get an AI-generated summary of everything discussed
-                  </p>
-                </div>
-
-                <div className="p-3 bg-[var(--color-background-dark)] rounded-lg">
-                  <p className="font-medium text-[var(--color-text-primary)] text-sm">
-                    "What are the action items?"
-                  </p>
-                  <p className="text-xs text-[var(--color-text-muted)] mt-1">
-                    Extract all action items and owners from the meeting
-                  </p>
-                </div>
-
-                <div className="p-3 bg-[var(--color-background-dark)] rounded-lg">
-                  <p className="font-medium text-[var(--color-text-primary)] text-sm">
-                    "Who made which decisions?"
-                  </p>
-                  <p className="text-xs text-[var(--color-text-muted)] mt-1">
-                    Get a breakdown of all decisions made and by whom
-                  </p>
-                </div>
-
-                <div className="p-3 bg-[var(--color-background-dark)] rounded-lg">
-                  <p className="font-medium text-[var(--color-text-primary)] text-sm">
-                    "Generate a follow-up email"
-                  </p>
-                  <p className="text-xs text-[var(--color-text-muted)] mt-1">
-                    Create a follow-up email with all key points
-                  </p>
-                </div>
-              </div>
-            </Card>
-          </div>
-
-          {/* Settings */}
-          <div>
-            <Card>
-              <h3 className="text-lg font-bold text-[var(--color-text-primary)] mb-6">
-                Voice Settings
-              </h3>
-
-              <div className="space-y-6">
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="font-medium text-[var(--color-text-primary)]">
-                      Voice Assistant
-                    </p>
-                    <Toggle
-                      checked={voiceSettings.enabled}
-                      onChange={(e) =>
-                        setVoiceSettings({ ...voiceSettings, enabled: e.target.checked })
-                      }
-                    />
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${turn.role === 'user'
+                      ? 'bg-slate-200 text-slate-600'
+                      : 'bg-purple-100 text-purple-600'
+                      }`}
+                  >
+                    {turn.role === 'user' ? (
+                      <User className="w-4 h-4" />
+                    ) : (
+                      <Sparkles className="w-4 h-4" />
+                    )}
                   </div>
-                  <p className="text-xs text-[var(--color-text-muted)]">
-                    Enable voice features
-                  </p>
-                </div>
-
-                <div className="border-t border-[var(--color-border)] pt-6">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="font-medium text-[var(--color-text-primary)]">
-                      Auto Transcribe
-                    </p>
-                    <Toggle
-                      checked={voiceSettings.autoTranscribe}
-                      onChange={(e) =>
-                        setVoiceSettings({ ...voiceSettings, autoTranscribe: e.target.checked })
-                      }
-                    />
+                  <div
+                    className={`max-w-[80%] px-4 py-2.5 rounded-2xl text-sm ${turn.role === 'user'
+                      ? 'bg-slate-100 text-slate-700'
+                      : 'bg-blue-50 text-slate-700'
+                      }`}
+                  >
+                    {turn.text}
                   </div>
-                  <p className="text-xs text-[var(--color-text-muted)]">
-                    Automatically transcribe all meetings
-                  </p>
                 </div>
-
-                <div className="border-t border-[var(--color-border)] pt-6">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="font-medium text-[var(--color-text-primary)]">
-                      Real-time Analysis
-                    </p>
-                    <Toggle
-                      checked={voiceSettings.realTimeAnalysis}
-                      onChange={(e) =>
-                        setVoiceSettings({ ...voiceSettings, realTimeAnalysis: e.target.checked })
-                      }
-                    />
-                  </div>
-                  <p className="text-xs text-[var(--color-text-muted)]">
-                    Analyze content as it's spoken
-                  </p>
-                </div>
-
-                <div className="border-t border-[var(--color-border)] pt-6">
-                  <p className="text-sm font-medium text-[var(--color-text-primary)] mb-3">
-                    Native Language
-                  </p>
-                  <select className="input-field text-sm">
-                    <option>English</option>
-                    <option>Spanish</option>
-                    <option>French</option>
-                    <option>German</option>
-                    <option>Mandarin</option>
-                  </select>
-                </div>
-              </div>
-            </Card>
-
-            {/* Status */}
-            <Card className="mt-6">
-              <h3 className="text-lg font-bold text-[var(--color-text-primary)] mb-4">
-                Status
-              </h3>
-
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-[var(--color-text-secondary)]">
-                    Microphone
-                  </p>
-                  <Badge variant="success" size="sm">
-                    Ready
-                  </Badge>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-[var(--color-text-secondary)]">
-                    API Connection
-                  </p>
-                  <Badge variant="success" size="sm">
-                    Connected
-                  </Badge>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-[var(--color-text-secondary)]">
-                    Processing
-                  </p>
-                  <Badge variant="info" size="sm">
-                    Idle
-                  </Badge>
-                </div>
-              </div>
-            </Card>
-          </div>
-        </div>
+              ))}
+              <div ref={scrollRef} />
+            </div>
+          </Card>
+        )}
       </main>
     </>
   );
