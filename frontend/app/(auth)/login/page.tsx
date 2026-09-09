@@ -33,8 +33,8 @@ export default function LoginPage() {
         return;
       }
 
-
-
+      const returnPath = auth.getAndClearPostLoginRedirect();
+      router.push(returnPath || '/dashboard');
     } catch (err: unknown) {
       const errorMessage =
         err instanceof Error ? err.message : 'Login failed. Please try again.';

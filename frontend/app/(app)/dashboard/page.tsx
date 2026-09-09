@@ -6,7 +6,6 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/layout/Header';
-import Card from '@/components/ui/card';
 import Caption from '@/components/ui/caption';
 import Modal from '@/components/ui/modal';
 import Button from '@/components/ui/button';

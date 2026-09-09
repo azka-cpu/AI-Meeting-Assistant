@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -36,7 +35,6 @@ export default function SettingsPage() {
         pref_language: 'en',
         pref_timezone: 'UTC',
     });
-    const [themeChoice, setThemeChoice] = useState('light');
     const [prefsSaving, setPrefsSaving] = useState(false);
     const [prefsMsg, setPrefsMsg] = useState('');
 
@@ -93,7 +91,7 @@ export default function SettingsPage() {
             setPrefsMsg('Saved');
             setTimeout(() => setPrefsMsg(''), 1500);
         } catch (err) {
-            setPrefs(previous); // revert on failure
+            setPrefs(previous);
             console.error('Failed to save preference:', err);
         } finally {
             setPrefsSaving(false);
@@ -219,24 +217,28 @@ export default function SettingsPage() {
                                     desc="Receive email updates about your meetings"
                                     checked={prefs.notify_email}
                                     onChange={(v) => updatePreference({ notify_email: v })}
+                                    disabled={prefsSaving}
                                 />
                                 <ToggleRow
                                     title="Meeting Reminders"
                                     desc="Get reminded before your scheduled meetings"
                                     checked={prefs.notify_reminders}
                                     onChange={(v) => updatePreference({ notify_reminders: v })}
+                                    disabled={prefsSaving}
                                 />
                                 <ToggleRow
                                     title="Weekly Digest"
                                     desc="Receive a weekly summary of your meetings"
                                     checked={prefs.notify_weekly_digest}
                                     onChange={(v) => updatePreference({ notify_weekly_digest: v })}
+                                    disabled={prefsSaving}
                                 />
                                 <ToggleRow
                                     title="Product Updates"
                                     desc="Learn about new features and improvements"
                                     checked={prefs.notify_product_updates}
                                     onChange={(v) => updatePreference({ notify_product_updates: v })}
+                                    disabled={prefsSaving}
                                     last
                                 />
                             </div>
@@ -286,25 +288,6 @@ export default function SettingsPage() {
                                         <option value="CST">Central (CST)</option>
                                         <option value="PST">Pacific (PST)</option>
                                     </select>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                                        Theme
-                                    </label>
-                                    <select
-                                        className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        value={themeChoice}
-                                        onChange={(e) => setThemeChoice(e.target.value)}
-                                    >
-                                        <option value="light">Light</option>
-                                        <option value="dark">Dark</option>
-                                        <option value="auto">Auto</option>
-                                    </select>
-                                    <p className="text-xs text-amber-600 mt-1">
-                                        Only Light theme is actually implemented right now —
-                                        choosing Dark/Auto here won&apos;t change anything yet.
-                                    </p>
                                 </div>
                             </div>
                         </Card>
@@ -414,12 +397,14 @@ function ToggleRow({
     desc,
     checked,
     onChange,
+    disabled = false,
     last = false,
 }: {
     title: string;
     desc: string;
     checked: boolean;
     onChange: (value: boolean) => void;
+    disabled?: boolean;
     last?: boolean;
 }) {
     return (
@@ -428,7 +413,7 @@ function ToggleRow({
                 <p className="font-medium text-slate-900">{title}</p>
                 <p className="text-sm text-slate-500">{desc}</p>
             </div>
-            <Toggle checked={checked} onChange={(e) => onChange(e.target.checked)} />
+            <Toggle checked={checked} onChange={(e) => onChange(e.target.checked)} disabled={disabled} />
         </div>
     );
 }

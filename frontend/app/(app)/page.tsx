@@ -1,15 +1,16 @@
+
+
 'use client';
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { auth } from '@/lib/auth';
 
-export default function HomePage() {
+export default function RootPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
+    if (auth.isAuthenticated()) {
       router.push('/dashboard');
     } else {
       router.push('/login');
@@ -17,13 +18,8 @@ export default function HomePage() {
   }, [router]);
 
   return (
-    <div className="min-h-screen bg-[var(--color-background-dark)] flex items-center justify-center">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-secondary)] bg-clip-text text-transparent mb-4">
-          MeetMate AI
-        </h1>
-        <p className="text-[var(--color-text-secondary)]">Redirecting...</p>
-      </div>
+    <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
     </div>
   );
 }
