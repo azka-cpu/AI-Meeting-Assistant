@@ -1,5 +1,3 @@
-
-
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -7,7 +5,7 @@ from dotenv import load_dotenv
 import os
 
 from app.database import engine, Base
-from app.routes import auth, meetings, ai, dashboard, webrtc,profile, voice
+from app.routes import auth, meetings, ai, dashboard, webrtc, profile, voice
 from app.websocket import websocket_manager
 
 load_dotenv()
@@ -21,19 +19,16 @@ async def lifespan(app: FastAPI):
     # Startup
     print("Starting AI Meeting Assistant API...")
 
-    import os
     jwt_secret = os.getenv("JWT_SECRET")
     if not jwt_secret or jwt_secret == "your-secret-key-change-in-production":
         print(
-                "\n"
-                "âš ï¸  WARNING: JWT_SECRET is not set (or is using the default "
-                "fallback) in backend/.env.\n"
-                "    Every token issued right now will become INVALID the next "
-                "time this falls back differently.\n"
-                "    Add a real JWT_SECRET line to backend/.env and restart.\n"
-            )
+            "\n"
+            "⚠️  WARNING: JWT_SECRET is not set or is using default value in backend/.env.\n"
+            "    Every token issued right now will become INVALID on restart.\n"
+            "    Add a real JWT_SECRET line to backend/.env and restart.\n"
+        )
     else:
-        print(f"âœ… JWT_SECRET loaded correctly (starts with: {jwt_secret[:6]}...)")
+        print(f"✅ JWT_SECRET loaded correctly (starts with: {jwt_secret[:6]}...)")
     yield
     # Shutdown
     print("Shutting down AI Meeting Assistant API...")
@@ -46,11 +41,20 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS Configuration
+# CORS Configuration - FIXED
 frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+
+# List of allowed origins. NO trailing slash!
+origins = [
+    frontend_url,
+    "https://ai-meeting-assistant-azkacpu.vercel.app",
+    "http://localhost:3000",
+    "http://localhost:3001",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[frontend_url, "https://ai-meeting-assistant-azkacpu.vercel.app/", "https://ai-meeting-assistant-azkacpu.vercel.app/"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -64,6 +68,7 @@ app.include_router(profile.router, prefix="/api/auth", tags=["profile"])
 app.include_router(dashboard.router)
 app.include_router(webrtc.router)
 app.include_router(voice.router)
+
 
 @app.get("/")
 async def root():
